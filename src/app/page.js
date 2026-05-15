@@ -53,7 +53,9 @@ export default function Home() {
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-main)' }}>
       <div className="card" style={{ maxWidth: 400, width: '100%', padding: '40px 32px', textAlign: 'center', margin: '0 20px' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          <div className="sidebar-logo-icon" style={{ width: 64, height: 64, fontSize: '2rem' }}>M</div>
+          <div className="sidebar-logo-icon" style={{ width: 64, height: 64, fontSize: '2rem', background: 'transparent' }}>
+            <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
         </div>
         <h1 style={{ fontSize: '1.5rem', marginBottom: 8, color: 'var(--text-primary)' }}>{isSetup ? 'Welcome to Multi Manager' : 'Welcome Back'}</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: 32, fontSize: '0.9rem' }}>

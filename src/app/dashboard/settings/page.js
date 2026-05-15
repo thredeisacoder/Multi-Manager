@@ -180,7 +180,7 @@ export default function SettingsPage() {
             </div>
             <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px' }}>
               <p style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Workspace Identity</p>
-              <p style={{ margin: 0, fontWeight: 'bold' }}>Admin / Local Mode</p>
+              <p style={{ margin: 0, fontWeight: 'bold' }}>Administrator / Local Mode</p>
             </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
               💡 All encryption and decryption happens locally in your browser. Your PIN is never sent to any server.

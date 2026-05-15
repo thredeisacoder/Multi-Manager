@@ -520,7 +520,7 @@ export default function DashboardPage() {
   return (
     <div className="page-container animate-fadeIn">
       <div className="page-header">
-        <h1 className="page-title">Dashboard</h1>
+        <h1 className="page-title">Dashoard</h1>
       </div>
 
       <div className="flex-between" style={{ marginBottom: 16 }}>

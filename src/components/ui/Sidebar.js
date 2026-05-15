@@ -48,7 +48,9 @@ export default function Sidebar({ isOpen, onToggle, onDataChange }) {
       </button>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`} style={{ zIndex: 300 }}>
         <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">M</div>
+          <div className="sidebar-logo-icon">
+            <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          </div>
           <span className="sidebar-logo-text">Multi Manager</span>
         </div>
         <nav className="sidebar-nav">
@@ -117,9 +119,11 @@ export default function Sidebar({ isOpen, onToggle, onDataChange }) {
               background: userMenuOpen ? 'rgba(255,255,255,0.05)' : 'transparent'
             }}
           >
-            <div className="sidebar-avatar" style={{ background: userMenuOpen ? 'var(--primary)' : '' }}>A</div>
+            <div className="sidebar-avatar" style={{ background: userMenuOpen ? 'var(--primary)' : 'transparent', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <img src="/admin.png" alt="Admin" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            </div>
             <div className="sidebar-user-info">
-              <div className="sidebar-user-name">Admin</div>
+              <div className="sidebar-user-name">ADMINISTRATOR</div>
               <div className="sidebar-user-role">Local Mode</div>
             </div>
             <svg style={{ marginLeft: 'auto', opacity: 0.5, transform: userMenuOpen ? 'rotate(180deg)' : 'none', transition: '0.3s' }} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15"/></svg>
