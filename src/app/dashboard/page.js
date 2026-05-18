@@ -551,11 +551,11 @@ export default function DashboardPage() {
         <div className="stat-card">
           <div className="stat-label">Total Revenue / Income</div>
           <div className="stat-value income">{fmt(currentInfo.stats.revenue, currentInfo.stats.currency)}</div>
-          {activeTab === 'business' && currentInfo.stats.pending > 0 && (
+          {activeTab === 'business' && currentInfo.stats.pending !== 0 && (
             <div style={{ marginTop: 16, paddingTop: 16, borderTop: '1px dashed rgba(255, 255, 255, 0.1)' }}>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 4 }}>Pending Revenue</div>
-              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#54a0ff', fontFamily: 'var(--font-mono)' }}>
-                +{fmt(currentInfo.stats.pending, currentInfo.stats.currency)}
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: currentInfo.stats.pending >= 0 ? '#54a0ff' : 'var(--expense)', fontFamily: 'var(--font-mono)' }}>
+                {currentInfo.stats.pending > 0 ? '+' : ''}{fmt(currentInfo.stats.pending, currentInfo.stats.currency)}
               </div>
             </div>
           )}
@@ -681,8 +681,8 @@ export default function DashboardPage() {
           <div className="card">
             <div className="card-header"><h3 className="card-title">Collected vs Pending Revenue</h3></div>
             <div className="chart-container" style={{ height: 260 }}>
-              {businessInfo.stats.revenue > 0 || businessInfo.stats.pending > 0 ? (
-                <Doughnut data={{ labels: ['Collected', 'Pending'], datasets: [{ data: [businessInfo.stats.revenue, businessInfo.stats.pending], backgroundColor: ['#00ff6a', '#54a0ff'], borderWidth: 0 }] }} options={doughnutOpts} />
+              {businessInfo.stats.revenue > 0 || businessInfo.stats.pending !== 0 ? (
+                <Doughnut data={{ labels: ['Collected', 'Pending'], datasets: [{ data: [businessInfo.stats.revenue, Math.max(0, businessInfo.stats.pending)], backgroundColor: ['#00ff6a', '#54a0ff'], borderWidth: 0 }] }} options={doughnutOpts} />
               ) : <div className="empty-state"><p>No revenue data</p></div>}
             </div>
           </div>

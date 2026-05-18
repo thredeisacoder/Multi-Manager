@@ -31,7 +31,7 @@ export default function FinancePage() {
   const [txForm, setTxForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '' });
   const [pendingTxs, setPendingTxs] = useState([]); // pending revenue log
   const [addingPending, setAddingPending] = useState(false);
-  const [pendingForm, setPendingForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '' });
+  const [pendingForm, setPendingForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', type: 'revenue' });
 
   useEffect(() => { 
     cleanupOrphanedRecords(); // remove records from deleted segments
@@ -93,7 +93,7 @@ export default function FinancePage() {
     setAddingTxForField(null);
     setAddingPending(false);
     setTxForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '' });
-    setPendingForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '' });
+    setPendingForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', type: 'revenue' });
   };
 
   const saveRecord = () => {
@@ -106,12 +106,20 @@ export default function FinancePage() {
   };
 
   const addPendingTx = () => {
-    const amount = parseFloat(pendingForm.amount) || 0;
-    if (!amount || amount <= 0) { toast.error('Please enter a valid amount'); return; }
+    let amount = parseFloat(pendingForm.amount) || 0;
+    if (amount === 0) { toast.error('Please enter a non-zero amount'); return; }
+    
+    const type = pendingForm.type || 'revenue';
+    if (type === 'hold') {
+      amount = -Math.abs(amount);
+    } else {
+      amount = Math.abs(amount);
+    }
+
     const tx = { id: uuidv4(), date: pendingForm.date || new Date().toISOString().slice(0, 10), description: pendingForm.description.trim() || '—', amount };
     setPendingTxs(prev => [...prev, tx]);
     setAddingPending(false);
-    setPendingForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '' });
+    setPendingForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', type: 'revenue' });
   };
 
   const deletePendingTx = (txId) => {
@@ -385,56 +393,78 @@ export default function FinancePage() {
                       </div>
                     ))}
 
-                    {activeSegment.category === 'business' && (
-                      <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                          <span className="form-label" style={{ margin: 0, color: '#54a0ff' }}>Pending Revenue</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', color: '#54a0ff', fontWeight: 700, fontSize: '0.95rem' }}>
-                              {fmt(pendingTxs.reduce((s, t) => s + t.amount, 0), activeSegment.currency)}
-                            </span>
-                            <button className="btn btn-ghost btn-sm" style={{ color: '#54a0ff', fontSize: '0.8rem', padding: '3px 10px' }}
-                              onClick={() => setAddingPending(!addingPending)}>+ Add</button>
-                          </div>
-                        </div>
-
-                        {addingPending && (
-                          <div style={{ background: 'rgba(84,160,255,0.05)', border: '1px solid rgba(84,160,255,0.2)', borderRadius: 8, padding: 12, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                              <input type="date" className="input" style={{ flex: '0 0 140px', fontSize: '0.85rem' }}
-                                value={pendingForm.date} onChange={e => setPendingForm({ ...pendingForm, date: e.target.value })} />
-                              <input className="input" placeholder="e.g. Order #123" style={{ flex: 1, minWidth: 120, fontSize: '0.85rem' }}
-                                value={pendingForm.description} onChange={e => setPendingForm({ ...pendingForm, description: e.target.value })} />
-                              <input type="number" className="input" placeholder="Amount" style={{ width: 120, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}
-                                value={pendingForm.amount} onChange={e => setPendingForm({ ...pendingForm, amount: e.target.value })}
-                                onKeyDown={e => e.key === 'Enter' && addPendingTx()} />
-                            </div>
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                              <button className="btn btn-secondary btn-sm" onClick={() => setAddingPending(false)}>Cancel</button>
-                              <button className="btn btn-primary btn-sm" onClick={addPendingTx}>Add</button>
+                    {activeSegment.category === 'business' && (() => {
+                      const totalPendingVal = pendingTxs.reduce((s, t) => s + t.amount, 0);
+                      const pendingColor = totalPendingVal >= 0 ? '#54a0ff' : 'var(--expense)';
+                      const pendingButtonColor = totalPendingVal >= 0 ? '#54a0ff' : 'var(--expense)';
+                      const pendingListBorder = totalPendingVal >= 0 ? 'rgba(84,160,255,0.2)' : 'rgba(255,71,87,0.2)';
+                      return (
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px dashed var(--border-color)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <span className="form-label" style={{ margin: 0, color: pendingColor }}>Pending Revenue</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <span style={{ fontFamily: 'var(--font-mono)', color: pendingColor, fontWeight: 700, fontSize: '0.95rem' }}>
+                                {totalPendingVal > 0 ? '+' : ''}{fmt(totalPendingVal, activeSegment.currency)}
+                              </span>
+                              <button className="btn btn-ghost btn-sm" style={{ color: pendingButtonColor, fontSize: '0.8rem', padding: '3px 10px' }}
+                                onClick={() => setAddingPending(!addingPending)}>+ Add</button>
                             </div>
                           </div>
-                        )}
 
-                        {pendingTxs.length > 0 ? (
-                          <div style={{ borderRadius: 6, overflow: 'hidden', border: '1px solid rgba(84,160,255,0.2)' }}>
-                            {[...pendingTxs].sort((a, b) => b.date.localeCompare(a.date)).map((tx, i) => (
-                              <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: i % 2 === 0 ? 'var(--bg-input)' : 'transparent', fontSize: '0.85rem' }}>
-                                <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', minWidth: 68 }}>{tx.date}</span>
-                                <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{tx.description}</span>
-                                <span style={{ fontFamily: 'var(--font-mono)', color: '#54a0ff', fontWeight: 600 }}>{fmt(tx.amount, activeSegment.currency)}</span>
-                                <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', lineHeight: 1 }}
-                                  onClick={() => deletePendingTx(tx.id)} title="Delete">
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                </button>
+                          {addingPending && (() => {
+                            const isHold = pendingForm.type === 'hold';
+                            const pendingBg = isHold ? 'rgba(255,71,87,0.05)' : 'rgba(84,160,255,0.05)';
+                            const pendingBorder = isHold ? 'rgba(255,71,87,0.2)' : 'rgba(84,160,255,0.2)';
+                            return (
+                              <div style={{ background: pendingBg, border: `1px solid ${pendingBorder}`, borderRadius: 8, padding: 12, marginBottom: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                  <input type="date" className="input" style={{ flex: '0 0 140px', fontSize: '0.85rem' }}
+                                    value={pendingForm.date} onChange={e => setPendingForm({ ...pendingForm, date: e.target.value })} />
+                                  <select className="select" style={{ width: 155, fontSize: '0.85rem' }}
+                                    value={pendingForm.type || 'revenue'} onChange={e => setPendingForm({ ...pendingForm, type: e.target.value })}>
+                                    <option value="revenue">Revenue (+)</option>
+                                    <option value="hold">Hold / Deduct (-)</option>
+                                  </select>
+                                  <input className="input" placeholder={isHold ? "e.g. Account suspension hold" : "e.g. Order #123"} style={{ flex: 1, minWidth: 120, fontSize: '0.85rem' }}
+                                    value={pendingForm.description} onChange={e => setPendingForm({ ...pendingForm, description: e.target.value })} />
+                                  <input type="number" className="input" placeholder="Amount" style={{ width: 120, fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}
+                                    value={pendingForm.amount} onChange={e => setPendingForm({ ...pendingForm, amount: e.target.value })}
+                                    onKeyDown={e => e.key === 'Enter' && addPendingTx()} />
+                                </div>
+                                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                  <button className="btn btn-secondary btn-sm" onClick={() => setAddingPending(false)}>Cancel</button>
+                                  <button className="btn btn-primary btn-sm" onClick={addPendingTx}>Add</button>
+                                </div>
                               </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', fontStyle: 'italic', padding: '4px 0' }}>No pending revenue logged. Click + Add to record an outstanding order.</div>
-                        )}
-                      </div>
-                    )}
+                            );
+                          })()}
+
+                          {pendingTxs.length > 0 ? (
+                            <div style={{ borderRadius: 6, overflow: 'hidden', border: `1px solid ${pendingListBorder}` }}>
+                              {[...pendingTxs].sort((a, b) => b.date.localeCompare(a.date)).map((tx, i) => {
+                                const isItemHold = tx.amount < 0;
+                                const itemColor = isItemHold ? 'var(--expense)' : '#54a0ff';
+                                return (
+                                  <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: i % 2 === 0 ? 'var(--bg-input)' : 'transparent', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', fontSize: '0.78rem', minWidth: 68 }}>{tx.date}</span>
+                                    <span style={{ flex: 1, color: 'var(--text-secondary)' }}>{tx.description}</span>
+                                    <span style={{ fontFamily: 'var(--font-mono)', color: itemColor, fontWeight: 600 }}>
+                                      {tx.amount > 0 ? '+' : ''}{fmt(tx.amount, activeSegment.currency)}
+                                    </span>
+                                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px 4px', lineHeight: 1 }}
+                                      onClick={() => deletePendingTx(tx.id)} title="Delete">
+                                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                    </button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', fontStyle: 'italic', padding: '4px 0' }}>No pending revenue logged. Click + Add to record an outstanding order.</div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
                 {expenseFields.length > 0 && (
