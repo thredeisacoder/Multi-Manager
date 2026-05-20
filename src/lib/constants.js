@@ -32,7 +32,7 @@ export const PLATFORMS = {
   ebay: {
     name: 'eBay',
     slug: 'ebay',
-    color: '#e53238',
+    color: '#ff0008ff',
     icon: 'ebay',
     fieldSchema: [
       { key: 'date_reg', label: 'Date Reg', type: 'text', encrypted: false },
@@ -67,6 +67,29 @@ export const PLATFORMS = {
       { key: 'note', label: 'Note', type: 'textarea', encrypted: false },
     ],
   },
+  shopify: {
+    name: 'Shopify',
+    slug: 'shopify',
+    color: '#00ff00ff',
+    icon: 'shopify',
+    fieldSchema: [
+      { key: 'create_date', label: 'Create Date', type: 'date', encrypted: false },
+      { key: 'status', label: 'Status', type: 'select', encrypted: false, options: ['Active', 'Inactive', 'Suspended', 'Banned'] },
+      { key: 'shop_name', label: 'Shop Name', type: 'text', encrypted: false },
+      { key: 'link_shop', label: 'Link Shop', type: 'url', encrypted: false },
+      { key: 'page', label: 'Page', type: 'url', encrypted: false },
+      { key: 'mail', label: 'Mail', type: 'email', encrypted: false },
+      { key: 'pass_mail_shopify', label: 'Password Mail / Shopify', type: 'text', encrypted: true },
+      { key: 'recovery_mail', label: 'Recovery Mail', type: 'email', encrypted: false },
+      { key: 'twofa_mail', label: '2FA Mail', type: 'text', encrypted: true },
+      { key: '2fa_shopify', label: '2FA Shopify', type: 'text', encrypted: true },
+      { key: 'name', label: 'Name', type: 'text', encrypted: false },
+      { key: 'dob', label: 'DOB', type: 'date', encrypted: false },
+      { key: 'address', label: 'Address', type: 'text', encrypted: false },
+      { key: 'ssn', label: 'SSN', type: 'text', encrypted: true },
+      { key: 'proxy', label: 'Proxy', type: 'text', encrypted: true }
+    ],
+  }
 };
 
 export const DEFAULT_FINANCE_FIELDS = [
