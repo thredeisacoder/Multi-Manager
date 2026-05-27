@@ -235,6 +235,7 @@ tr:hover { background: rgba(0,255,106,0.03); }
 .toast-success { background: rgba(0,255,106,0.1); border-color: rgba(0,255,106,0.3); color: var(--success); }
 .toast-error { background: rgba(255,71,87,0.1); border-color: rgba(255,71,87,0.3); color: var(--danger); }
 .toast-warning { background: rgba(254,202,87,0.1); border-color: rgba(254,202,87,0.3); color: var(--warning); }
+.toast-info { background: rgba(84,160,255,0.1); border-color: rgba(84,160,255,0.3); color: var(--info); }
 
 /* ===== SIDEBAR ===== */
 .sidebar {
