@@ -370,25 +370,28 @@ export async function changePin(oldPin, newPin) {
 // =================== IMPORT / EXPORT ===================
 // NOTE: Exported data contains ENCRYPTED sensitive fields.
 // The file is safe to store/share — fields can only be decrypted with the correct PIN.
-export function exportAllData() {
+export async function exportAllData() {
   // Always load fresh data from localStorage to ensure we get the encrypted state
   if (typeof window === 'undefined') return;
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) {
-    console.error('No data found to export');
-    return;
+    throw new Error('No data found to export');
   }
   
-  // Create a blob from the raw localStorage string (which is already encrypted)
-  const blob = new Blob([raw], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `multi-manager-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const response = await fetch('/api/export-telegram', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: raw,
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to send backup to Telegram');
+  }
+
+  return await response.json();
 }
 
 export function importData(file) {

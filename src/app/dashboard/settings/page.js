@@ -11,7 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 export default function SettingsPage() {
   const toast = useToast();
   const confirm = useConfirm();
-  const [platforms, setPlatforms] = useState([]);
+  const [platforms, setPlatforms] = useState(() => getPlatforms());
   const [showAddPlatform, setShowAddPlatform] = useState(false);
   const [platForm, setPlatForm] = useState({ name: '', slug: '', color: '#00ff6a', field_schema: [] });
   const fileInputRef = useRef(null);
@@ -19,8 +19,7 @@ export default function SettingsPage() {
   // PIN Change State
   const [pinForm, setPinForm] = useState({ oldPin: '', newPin: '', confirmPin: '' });
   const [isChangingPin, setIsChangingPin] = useState(false);
-
-  useEffect(() => { reload(); }, []);
+  const [isExporting, setIsExporting] = useState(false);
 
   const reload = () => { setPlatforms(getPlatforms()); };
 
@@ -94,7 +93,19 @@ export default function SettingsPage() {
     }
   };
 
-  const handleExport = () => { exportAllData(); toast.success('Data exported'); };
+  const handleExport = async () => {
+    setIsExporting(true);
+    toast.info('Exporting and sending data to Telegram...');
+    try {
+      await exportAllData();
+      toast.success('Backup sent to Telegram successfully!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Export failed: ' + err.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const handleImport = async (e) => {
     const file = e.target.files?.[0];
@@ -198,9 +209,9 @@ export default function SettingsPage() {
           Export your data as JSON to back up or transfer to another computer. Import a previously exported file to restore your data.
         </p>
         <div className="flex-row" style={{ gap: 12 }}>
-          <button className="btn btn-primary" onClick={handleExport}>
+          <button className="btn btn-primary" onClick={handleExport} disabled={isExporting}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export All Data
+            {isExporting ? 'Sending to Telegram...' : 'Export All Data'}
           </button>
           <button className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
