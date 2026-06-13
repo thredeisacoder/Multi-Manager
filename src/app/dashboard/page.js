@@ -16,9 +16,11 @@ export default function DashboardPage() {
   const [accountsCount, setAccountsCount] = useState(0);
   const [statusData, setStatusData] = useState(null);
   const [selectedMonthDetails, setSelectedMonthDetails] = useState(null);
+  const [dailyMonthB, setDailyMonthB] = useState(null); // selected month for Business Daily Activity
+  const [dailyMonthP, setDailyMonthP] = useState(null); // selected month for Personal Daily Activity
   
-  const [businessInfo, setBusinessInfo] = useState({ stats: { revenue: 0, expenses: 0, profit: 0, debt: 0, dti: 0 }, chartData: null, expenseChartData: null, profitChartData: null, profitMarginData: null, cumulativeRevenueData: null, dailyChartData: null, categoryTrendData: null, monthlyHistory: [], segments: [] });
-  const [personalInfo, setPersonalInfo] = useState({ stats: { revenue: 0, expenses: 0, profit: 0, debt: 0, dti: 0 }, chartData: null, expenseChartData: null, profitChartData: null, monthlyRunningData: null, dailyChartData: null, categoryTrendData: null, monthlyHistory: [], segments: [] });
+  const [businessInfo, setBusinessInfo] = useState({ stats: { revenue: 0, expenses: 0, profit: 0, debt: 0, dti: 0 }, chartData: null, expenseChartData: null, profitChartData: null, profitMarginData: null, cumulativeRevenueData: null, dailyChartData: null, categoryTrendData: null, monthlyHistory: [], segments: [], txLogs: [], availableMonths: [] });
+  const [personalInfo, setPersonalInfo] = useState({ stats: { revenue: 0, expenses: 0, profit: 0, debt: 0, dti: 0 }, chartData: null, expenseChartData: null, profitChartData: null, monthlyRunningData: null, dailyChartData: null, categoryTrendData: null, monthlyHistory: [], segments: [], txLogs: [], availableMonths: [] });
 
   useEffect(() => { loadData(); }, [timeRange]);
 
@@ -446,12 +448,19 @@ export default function DashboardPage() {
         dailyChartData,
         categoryTrendData,
         monthlyHistory,
-        segments: catSegs
+        segments: catSegs,
+        txLogs: allTxLogs,
+        availableMonths: months,
       };
     };
 
-    setBusinessInfo(processCategory('business'));
-    setPersonalInfo(processCategory('personal'));
+    const biz = processCategory('business');
+    const per = processCategory('personal');
+    setBusinessInfo(biz);
+    setPersonalInfo(per);
+    // Reset daily month selector to the latest month with data
+    setDailyMonthB(biz.availableMonths[biz.availableMonths.length - 1] || null);
+    setDailyMonthP(per.availableMonths[per.availableMonths.length - 1] || null);
   };
 
   const chartOpts = {
@@ -541,6 +550,27 @@ export default function DashboardPage() {
   };
 
   const currentInfo = activeTab === 'business' ? businessInfo : personalInfo;
+
+  // Compute daily chart data for any month on demand (used by Daily Activity month picker)
+  const getDailyChartForMonth = (info, month) => {
+    if (!month || !info.txLogs) return null;
+    const dailyIncome = {}, dailyExpense = {};
+    info.txLogs.filter(t => t.month === month).forEach(t => {
+      const d = t.date ? parseInt(t.date.slice(8, 10)) : 1;
+      if (t.kind === 'income') dailyIncome[d] = (dailyIncome[d] || 0) + t.amount;
+      else dailyExpense[d] = (dailyExpense[d] || 0) + t.amount;
+    });
+    const days = Array.from({ length: 31 }, (_, i) => i + 1);
+    const hasData = days.some(d => dailyIncome[d] || dailyExpense[d]);
+    if (!hasData) return null;
+    return {
+      labels: days.map(d => `Day ${d}`),
+      datasets: [
+        { label: 'Income', data: days.map(d => dailyIncome[d] || 0), backgroundColor: '#00ff6a' },
+        { label: 'Expense', data: days.map(d => dailyExpense[d] || 0), backgroundColor: '#ff4757' }
+      ]
+    };
+  };
 
   return (
     <div className="page-container animate-fadeIn">
@@ -691,19 +721,28 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* B-Row 4: Daily Activity + Collected vs Pending */}
         <div className="grid-2" style={{ marginBottom: 24 }}>
           <div className="card">
-            <div className="card-header">
+            <div className="card-header" style={{ flexWrap: 'wrap', gap: 8 }}>
               <h3 className="card-title">Daily Activity</h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Income &amp; expense by day
-                {businessInfo.dailyChartData?._month ? ` — ${businessInfo.dailyChartData._month}` : ' — current month'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {businessInfo.availableMonths.length > 1 && (
+                  <select
+                    value={dailyMonthB || ''}
+                    onChange={e => setDailyMonthB(e.target.value)}
+                    style={{ fontSize: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}
+                  >
+                    {[...businessInfo.availableMonths].reverse().map(m => {
+                      const [y, mo] = m.split('-');
+                      return <option key={m} value={m}>{mo}/{y}</option>;
+                    })}
+                  </select>
+                )}
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>by day</span>
+              </div>
             </div>
             <div className="chart-container" style={{ height: 260 }}>
-              {businessInfo.dailyChartData ? <Bar data={businessInfo.dailyChartData} options={chartOpts} /> :
-                <div className="empty-state"><p>Log transactions to see daily patterns</p></div>}
+              {(() => { const d = getDailyChartForMonth(businessInfo, dailyMonthB); return d ? <Bar data={d} options={chartOpts} /> : <div className="empty-state"><p>No transaction data for this month</p></div>; })()}
             </div>
           </div>
           <div className="card">
@@ -850,16 +889,26 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="card">
-            <div className="card-header">
+            <div className="card-header" style={{ flexWrap: 'wrap', gap: 8 }}>
               <h3 className="card-title">Daily Activity</h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                Income &amp; expense by day
-                {personalInfo.dailyChartData?._month ? ` — ${personalInfo.dailyChartData._month}` : ' — current month'}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {personalInfo.availableMonths.length > 1 && (
+                  <select
+                    value={dailyMonthP || ''}
+                    onChange={e => setDailyMonthP(e.target.value)}
+                    style={{ fontSize: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', borderRadius: 6, padding: '2px 8px', cursor: 'pointer' }}
+                  >
+                    {[...personalInfo.availableMonths].reverse().map(m => {
+                      const [y, mo] = m.split('-');
+                      return <option key={m} value={m}>{mo}/{y}</option>;
+                    })}
+                  </select>
+                )}
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>by day</span>
+              </div>
             </div>
             <div className="chart-container" style={{ height: 260 }}>
-              {personalInfo.dailyChartData ? <Bar data={personalInfo.dailyChartData} options={chartOpts} /> :
-                <div className="empty-state"><p>Log transactions to see daily patterns</p></div>}
+              {(() => { const d = getDailyChartForMonth(personalInfo, dailyMonthP); return d ? <Bar data={d} options={chartOpts} /> : <div className="empty-state"><p>No transaction data for this month</p></div>; })()}
             </div>
           </div>
         </div>
