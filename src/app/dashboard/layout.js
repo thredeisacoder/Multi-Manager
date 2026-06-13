@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { ToastProvider } from '@/components/ui/Toast';
 import { ConfirmProvider } from '@/components/ui/ConfirmDialog';
 import Sidebar from '@/components/ui/Sidebar';
-import { migrateEncryptAccounts } from '@/lib/store';
+import { migrateEncryptAccounts, fixTransactionMonths } from '@/lib/store';
 
 export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -24,6 +24,11 @@ export default function DashboardLayout({ children }) {
       migrateEncryptAccounts().then(() => {
         sessionStorage.setItem('encryption_migrated', 'true');
       });
+    }
+    // Fix any transactions saved under wrong month records
+    if (!sessionStorage.getItem('tx_months_fixed')) {
+      fixTransactionMonths();
+      sessionStorage.setItem('tx_months_fixed', 'true');
     }
   }, [router, pathname]);
 

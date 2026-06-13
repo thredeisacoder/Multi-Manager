@@ -38,6 +38,91 @@ export function cleanupOrphanedRecords() {
   const before = (data.finance_records || []).length;
   data.finance_records = (data.finance_records || []).filter(r => validSegIds.has(r.segment_id));
   if (data.finance_records.length !== before) save(data);
+
+  fixTransactionMonths();
+}
+
+export function fixTransactionMonths() {
+  const data = load();
+  let changed = false;
+  
+  const records = data.finance_records || [];
+  
+  for (let i = 0; i < records.length; i++) {
+    const rec = records[i];
+    const txLog = rec.values?._tx_log || [];
+    const pendingTxs = rec.values?._pending_txs || [];
+    
+    const incorrectTxs = txLog.filter(tx => tx.date && tx.date.slice(0, 7) !== rec.month);
+    const incorrectPending = pendingTxs.filter(tx => tx.date && tx.date.slice(0, 7) !== rec.month);
+    
+    if (incorrectTxs.length > 0 || incorrectPending.length > 0) {
+      changed = true;
+      
+      rec.values._tx_log = txLog.filter(tx => !tx.date || tx.date.slice(0, 7) === rec.month);
+      rec.values._pending_txs = pendingTxs.filter(tx => !tx.date || tx.date.slice(0, 7) === rec.month);
+      
+      incorrectTxs.forEach(tx => {
+        if (tx.field_id) {
+          const val = parseFloat(rec.values[tx.field_id]) || 0;
+          rec.values[tx.field_id] = Math.max(0, val - tx.amount);
+        }
+      });
+      
+      rec.values._pending_amount = rec.values._pending_txs.reduce((sum, t) => sum + t.amount, 0);
+      
+      const txsByMonth = {};
+      incorrectTxs.forEach(tx => {
+        const destMonth = tx.date.slice(0, 7);
+        if (!txsByMonth[destMonth]) txsByMonth[destMonth] = { txs: [], pending: [] };
+        txsByMonth[destMonth].txs.push(tx);
+      });
+      incorrectPending.forEach(tx => {
+        const destMonth = tx.date.slice(0, 7);
+        if (!txsByMonth[destMonth]) txsByMonth[destMonth] = { txs: [], pending: [] };
+        txsByMonth[destMonth].pending.push(tx);
+      });
+      
+      for (const [destMonth, group] of Object.entries(txsByMonth)) {
+        let destRec = records.find(r => r.segment_id === rec.segment_id && r.month === destMonth);
+        if (!destRec) {
+          destRec = {
+            id: uuidv4(),
+            segment_id: rec.segment_id,
+            month: destMonth,
+            values: { _tx_log: [], _pending_txs: [], _pending_amount: 0 },
+            note: '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          records.push(destRec);
+        }
+        
+        if (!destRec.values) destRec.values = {};
+        if (!destRec.values._tx_log) destRec.values._tx_log = [];
+        if (!destRec.values._pending_txs) destRec.values._pending_txs = [];
+        
+        group.txs.forEach(tx => {
+          destRec.values._tx_log.push(tx);
+          if (tx.field_id) {
+            const val = parseFloat(destRec.values[tx.field_id]) || 0;
+            destRec.values[tx.field_id] = val + tx.amount;
+          }
+        });
+        
+        group.pending.forEach(tx => {
+          destRec.values._pending_txs.push(tx);
+        });
+        destRec.values._pending_amount = destRec.values._pending_txs.reduce((sum, t) => sum + t.amount, 0);
+        destRec.updated_at = new Date().toISOString();
+      }
+    }
+  }
+  
+  if (changed) {
+    save(data);
+    console.log('[Migration] Corrected transaction months in finance records.');
+  }
 }
 
 // =================== PLATFORMS ===================

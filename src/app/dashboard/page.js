@@ -147,11 +147,32 @@ export default function DashboardPage() {
           totalPending += (parseFloat(rec.values._pending_amount) || 0);
         }
 
-        // Collect tx_log entries for transaction analytics
+        // Collect tx_log entries for transaction analytics.
+        // Use the tx's actual date-month for grouping to ensure Daily Activity
+        // displays data in the correct month, even if the record month differs.
         if (rec.values?._tx_log) {
           rec.values._tx_log.forEach(tx => {
             const fieldName = (seg.fields || []).find(f => f.id === tx.field_id)?.name || 'Other';
-            allTxLogs.push({ ...tx, month, fieldName, kind: tx.kind || (seg.fields.find(f => f.id === tx.field_id)?.type) });
+            const txActualMonth = tx.date ? tx.date.slice(0, 7) : month;
+            
+            // If tx's actual month is in range but different from record month,
+            // ensure that month has a monthlyData entry so it appears in charts
+            if (txActualMonth !== month && txActualMonth >= minMonthStr) {
+              if (!monthlyData[txActualMonth]) monthlyData[txActualMonth] = { income: 0, expense: 0, details: {} };
+              const txAmount = parseFloat(tx.amount) || 0;
+              const txKind = tx.kind || (seg.fields || []).find(f => f.id === tx.field_id)?.type;
+              if (txKind === 'income') {
+                totalIncome += txAmount;
+                monthlyData[txActualMonth].income += txAmount;
+              } else if (txKind === 'expense') {
+                totalExpense += txAmount;
+                monthlyData[txActualMonth].expense += txAmount;
+                const fname = fieldName;
+                expenseBreakdown[fname] = (expenseBreakdown[fname] || 0) + txAmount;
+              }
+            }
+            
+            allTxLogs.push({ ...tx, month: txActualMonth, fieldName, kind: tx.kind || (seg.fields.find(f => f.id === tx.field_id)?.type) });
           });
         }
       }
@@ -219,17 +240,21 @@ export default function DashboardPage() {
         };
       }
 
-      // Generate Daily Activity (Aggregated pattern across selected range)
+      // Generate Daily Activity — always shows the most recent month in the selected range.
+      // Aggregating all months into Day 1-31 creates confusing data, since transactions from
+      // different months on the same day get merged together.
       let dailyChartData = null;
       if (months.length > 0) {
+        const latestMonth = months[months.length - 1]; // most recent month in the filtered range
         const dailyIncome = {}, dailyExpense = {};
-        allTxLogs.filter(t => months.includes(t.month)).forEach(t => {
+        allTxLogs.filter(t => t.month === latestMonth).forEach(t => {
           const d = t.date ? parseInt(t.date.slice(8, 10)) : 1;
           if (t.kind === 'income') dailyIncome[d] = (dailyIncome[d] || 0) + t.amount;
           else dailyExpense[d] = (dailyExpense[d] || 0) + t.amount;
         });
         const days = Array.from({ length: 31 }, (_, i) => i + 1);
         dailyChartData = {
+          _month: latestMonth, // expose for subtitle
           labels: days.map(d => `Day ${d}`),
           datasets: [
             { label: 'Income', data: days.map(d => dailyIncome[d] || 0), backgroundColor: '#00ff6a' },
@@ -671,7 +696,10 @@ export default function DashboardPage() {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Daily Activity</h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Income & expense by day — current month</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Income &amp; expense by day
+                {businessInfo.dailyChartData?._month ? ` — ${businessInfo.dailyChartData._month}` : ' — current month'}
+              </span>
             </div>
             <div className="chart-container" style={{ height: 260 }}>
               {businessInfo.dailyChartData ? <Bar data={businessInfo.dailyChartData} options={chartOpts} /> :
@@ -824,7 +852,10 @@ export default function DashboardPage() {
           <div className="card">
             <div className="card-header">
               <h3 className="card-title">Daily Activity</h3>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Income & expense by day — current month</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Income &amp; expense by day
+                {personalInfo.dailyChartData?._month ? ` — ${personalInfo.dailyChartData._month}` : ' — current month'}
+              </span>
             </div>
             <div className="chart-container" style={{ height: 260 }}>
               {personalInfo.dailyChartData ? <Bar data={personalInfo.dailyChartData} options={chartOpts} /> :

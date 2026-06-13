@@ -11,6 +11,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 const fmt = (n, currency = 'USD') => new Intl.NumberFormat(currency === 'VND' ? 'vi-VN' : 'en-US', { style: 'currency', currency: currency, minimumFractionDigits: 0 }).format(n || 0);
 
+const getDefaultTxDate = (month) => {
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  return month === currentMonth
+    ? new Date().toISOString().slice(0, 10)
+    : `${month}-01`;
+};
+
 export default function FinancePage() {
   const toast = useToast();
   const confirm = useConfirm();
@@ -92,8 +99,9 @@ export default function FinancePage() {
     }
     setAddingTxForField(null);
     setAddingPending(false);
-    setTxForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '' });
-    setPendingForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', type: 'revenue' });
+    const defaultDate = getDefaultTxDate(selectedMonth);
+    setTxForm({ date: defaultDate, description: '', amount: '' });
+    setPendingForm({ date: defaultDate, description: '', amount: '', type: 'revenue' });
   };
 
   const saveRecord = () => {
@@ -108,18 +116,21 @@ export default function FinancePage() {
   const addPendingTx = () => {
     let amount = parseFloat(pendingForm.amount) || 0;
     if (amount === 0) { toast.error('Please enter a non-zero amount'); return; }
-    
+    const date = pendingForm.date || getDefaultTxDate(selectedMonth);
+    if (date.slice(0, 7) !== selectedMonth) {
+      toast.error(`Transaction date must be within the selected month (${selectedMonth})`);
+      return;
+    }
     const type = pendingForm.type || 'revenue';
     if (type === 'hold') {
       amount = -Math.abs(amount);
     } else {
       amount = Math.abs(amount);
     }
-
-    const tx = { id: uuidv4(), date: pendingForm.date || new Date().toISOString().slice(0, 10), description: pendingForm.description.trim() || '—', amount };
+    const tx = { id: uuidv4(), date, description: pendingForm.description.trim() || '—', amount };
     setPendingTxs(prev => [...prev, tx]);
     setAddingPending(false);
-    setPendingForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '', type: 'revenue' });
+    setPendingForm({ date: getDefaultTxDate(selectedMonth), description: '', amount: '', type: 'revenue' });
   };
 
   const deletePendingTx = (txId) => {
@@ -129,11 +140,16 @@ export default function FinancePage() {
   const addExpenseTx = (fieldId) => {
     const amount = parseFloat(txForm.amount) || 0;
     if (!amount || amount <= 0) { toast.error('Please enter a valid amount'); return; }
-    const tx = { id: uuidv4(), date: txForm.date || new Date().toISOString().slice(0, 10), description: txForm.description.trim() || '—', field_id: fieldId, amount, kind: 'expense' };
+    const date = txForm.date || getDefaultTxDate(selectedMonth);
+    if (date.slice(0, 7) !== selectedMonth) {
+      toast.error(`Transaction date must be within the selected month (${selectedMonth})`);
+      return;
+    }
+    const tx = { id: uuidv4(), date, description: txForm.description.trim() || '—', field_id: fieldId, amount, kind: 'expense' };
     setTxLog(prev => [...prev, tx]);
     setFormValues(prev => ({ ...prev, [fieldId]: (parseFloat(prev[fieldId]) || 0) + amount }));
     setAddingTxForField(null);
-    setTxForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '' });
+    setTxForm({ date: getDefaultTxDate(selectedMonth), description: '', amount: '' });
   };
 
   const deleteExpenseTx = (txId) => {
@@ -146,11 +162,16 @@ export default function FinancePage() {
   const addIncomeTx = (fieldId) => {
     const amount = parseFloat(txForm.amount) || 0;
     if (!amount || amount <= 0) { toast.error('Please enter a valid amount'); return; }
-    const tx = { id: uuidv4(), date: txForm.date || new Date().toISOString().slice(0, 10), description: txForm.description.trim() || '—', field_id: fieldId, amount, kind: 'income' };
+    const date = txForm.date || getDefaultTxDate(selectedMonth);
+    if (date.slice(0, 7) !== selectedMonth) {
+      toast.error(`Transaction date must be within the selected month (${selectedMonth})`);
+      return;
+    }
+    const tx = { id: uuidv4(), date, description: txForm.description.trim() || '—', field_id: fieldId, amount, kind: 'income' };
     setTxLog(prev => [...prev, tx]);
     setFormValues(prev => ({ ...prev, [fieldId]: (parseFloat(prev[fieldId]) || 0) + amount }));
     setAddingTxForField(null);
-    setTxForm({ date: new Date().toISOString().slice(0, 10), description: '', amount: '' });
+    setTxForm({ date: getDefaultTxDate(selectedMonth), description: '', amount: '' });
   };
 
   const deleteIncomeTx = (txId) => {
